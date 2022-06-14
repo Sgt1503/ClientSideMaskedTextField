@@ -1,12 +1,11 @@
 package org.vaadin.MaskedTextField;
 
-import com.vaadin.flow.component.customfield.CustomField;
-import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.dependency.JsModule;
 import com.vaadin.flow.component.dependency.NpmPackage;
-import com.vaadin.flow.component.html.Input;
 import com.vaadin.flow.component.internal.PendingJavaScriptInvocation;
 import com.vaadin.flow.component.internal.UIInternals;
+import com.vaadin.flow.component.page.PendingJavaScriptResult;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.dom.DomEventListener;
 import com.vaadin.flow.dom.DomListenerRegistration;
 import com.vaadin.flow.internal.StateNode;
@@ -18,22 +17,17 @@ import java.util.stream.Collectors;
 /**
  * @author Sergey.Tolstykh
  * @version 2.0
- *          Date 23.05.2022
+ * Date 14.06.2022
  */
-@NpmPackage(value = "jquery", version = "3.6.0")
 @NpmPackage(value = "inputmask", version = "5.0.7")
 @JsModule("inputmask/dist/inputmask.js")
-@JsModule("inputmask/dist/jquery.inputmask.js")
-@JsModule("./src/jquery-loader.js")
-@CssImport(value = "./styles/ncore/components/custom-textfield.css")
-public class MaskedTextField extends CustomField<String> {
+public class MaskedTextField extends TextField {
     private MaskType maskType;
     private MaskFormat format;
     private String allowedChars;
     private String mask;
     private boolean containsLiteral;
     private String placeholder;
-    private Input input;
     private final char DIGIT = '#';
     private final char ESCAPE_CHAR = '\'';
     private final char UPPERCASE = 'U';
@@ -44,15 +38,16 @@ public class MaskedTextField extends CustomField<String> {
     private final char DELIMITER = '-';
     private final char ANYTHING = '*';
     private DomListenerRegistration inputTextChangeListener;
-    String INPUTMASK = "inputmask";
+
     public enum MaskType {LAZY, EAGER}
+
     public enum MaskFormat {SWING, INPUTMASK}
 
     /*
-    * Default constructor will recognize InputMask.js style
-    * */
+     * Default constructor will recognize InputMask.js style
+     * */
     public MaskedTextField(String mask) {
-        this(mask, null, false, "_", MaskType.LAZY, MaskFormat.INPUTMASK);
+        this(mask, null, true, "_", MaskType.LAZY, MaskFormat.INPUTMASK);
     }
 
     public MaskedTextField(String mask, String allowedChars, boolean containsLiteral, String placeholder, MaskType maskType, MaskFormat format) {
@@ -62,23 +57,13 @@ public class MaskedTextField extends CustomField<String> {
         this.placeholder = placeholder;
         this.maskType = maskType;
         this.format = format;
-        createInput();
     }
 
     @Override
     public void setId(String id) {
         super.setId(id);
-        if (input == null)
-            createInput();
-        input.setId(id + "-input");
-        if (getValue() == null) {
-            build();
-        }
-        getElement().setChild(0, input.getElement());
-        if (inputTextChangeListener == null)
-            addTextChangeListener(l -> {
-                valueUpdater();
-            }, maskType);
+        build();
+        addTextChangeListener(l -> valueUpdater(), maskType);
     }
 
     public void valueUpdater() {
@@ -88,12 +73,12 @@ public class MaskedTextField extends CustomField<String> {
             getUnmaskedValuePromise().then(String.class, value -> setValue(value));
     }
 
-    public PendingJavaScriptInvocation getUnmaskedValuePromise() {
-        return getJavaScriptReturn(input.getElement().getNode(), getJqueryExpression(input.getId().get(), "unmaskedvalue"));
+    public PendingJavaScriptResult getUnmaskedValuePromise() {
+        return Util.getJavaScriptReturn(getElement().getNode(),"document.getElementById('" + this.getId().get() + "').shadowRoot.querySelector('input').inputmask.unmaskedvalue()");
     }
 
-    public PendingJavaScriptInvocation getMaskedValuePromise() {
-        return getJavaScriptReturn(input.getElement().getNode(), getJsExpression(input.getId().get(), INPUTMASK + "._valueGet", null));
+    public PendingJavaScriptResult getMaskedValuePromise() {
+        return Util.getJavaScriptReturn(getElement().getNode(),"document.getElementById('" + this.getId().get() + "').shadowRoot.querySelector('input').inputmask._valueGet()");
     }
 
     @Override
@@ -112,13 +97,6 @@ public class MaskedTextField extends CustomField<String> {
             });
         });
         return pending;
-    }
-
-    public void createInput() {
-        this.input = new Input();
-        input.getElement().setAttribute("required", true);
-        input.getElement().setAttribute("autocomplete", "off");
-        input.setType("text");
     }
 
     public String generateInputmaskJsCode(String placeholder, String jsMask, boolean greedy,
@@ -370,56 +348,117 @@ public class MaskedTextField extends CustomField<String> {
     }
 
 
-    @Override
-    protected String generateModelValue() {
-        return input.getValue();
-    }
-
-
-    @Override
-    protected void setPresentationValue(String s) {
-        setValue(s);
-    }
-
 
     @Override
     public void setValue(String value) {
         super.setValue(value);
-        if (input != null && value != null)
-            input.setValue(value);
     }
 
-    /*
-     * Example $('#TEST').mask("test")
-     *
-     */
-    public String getJsExpression(String id, String functionName, String funcParam) {
-        return "document.getElementById('" + id + "')." + functionName + "(" + (funcParam != null ? "\"" + funcParam + "\"" : "") + ")";
-    }
-
-    /*
-     * Example $('#TEST').inputmask('remove')
-     *
-     */
-    public String getJqueryExpression(String id, String funcParam) {
-        return "$('#" + id + "')." + INPUTMASK + (funcParam != null ? "(\'" + funcParam + "\');" : "");
-    }
 
     public void applyNewSwingMask(String mask, String placeholder, String allowedChars) {
-        getElement().executeJs(generateInputmaskJsCode(placeholder, StringUtils.remove(mask, '\''), false, genDefinitionsFromSwingMask(mask, allowedChars)) + ".mask($('#" + input.getId().get() + "'));");
+        applyMask(generateInputmaskJsCode(placeholder, StringUtils.remove(mask, '\''), false,
+                genDefinitionsFromSwingMask(mask, allowedChars)));
     }
 
     public void applyNewMask(String mask) {
-        getElement().executeJs(getJqueryExpression(input.getId().get(), mask));
+        applyMask(generateInputmaskJsCode("_", mask, false));
     }
 
-    protected void build(){
-        if (format.equals(MaskFormat.SWING))
-            getElement().executeJs(generateInputmaskJsCode("_", StringUtils.remove(mask, '\''), false,
-                    genDefinitionsFromSwingMask(mask, allowedChars)) + ".mask($('#" + this.input.getId().get() + "'));");
-        else if (format.equals(MaskFormat.INPUTMASK))
-            getElement().executeJs(generateInputmaskJsCode("_", mask, false) + ".mask($('#" + this.input.getId().get() + "'));");
+    protected void build() {
+        String inputmask = null;
+        switch (format) {
+            case SWING:
+                inputmask = generateInputmaskJsCode("_", StringUtils.remove(mask, '\''), false,
+                        genDefinitionsFromSwingMask(mask, allowedChars));
+                break;
+            case INPUTMASK:
+                inputmask = generateInputmaskJsCode("_", mask, false);
+                break;
+        }
+        ;
+        applyMask(inputmask);
+    }
 
+    private void applyMask(String inputmask) {
+        Util.getJavaScriptInvoke(getElement().getNode(),
+                "let textfield = document.getElementById('" + this.getId().get() + "')\n" +
+                        "let mask = " + inputmask + ";\n" +
+                        "function setmask(element, mask) {\n" +
+                        "\treturn new Promise((result)=> {\n" +
+                        "\t\tmask.mask(element);\n" +
+                        "\t} )\t\n" +
+                        "}\n" +
+                        "function waitForInput() {\n" +
+                        "\treturn new Promise((result)=> {\n" +
+                        "\t\twhile (!textfield) {\n" +
+                        "\t\t\tsleep(100);\n" +
+                        "\t\t}\n" +
+                        "\t\twhile (!textfield.shadowRoot.querySelector('input')) {\n" +
+                        "\t\t\tsleep(100);\n" +
+                        "\t\t}\n" +
+                        "\t\t\treturn result(textfield.shadowRoot.querySelector('input'));\n" +
+                        "\t} )\t\n" +
+                        "}\n" +
+                        "\n" +
+                        "function sleep(ms) {\n" +
+                        "  return new Promise(resolve => setTimeout(resolve, ms));\n" +
+                        "}\n" +
+                        "\n" +
+                        "function setCaretPosition(elem, caretPos) {\n" +
+                        "    \n" +
+                        "    if(elem != null) {\n" +
+                        "        if(elem.createTextRange) {\n" +
+                        "            var range = elem.createTextRange();\n" +
+                        "            range.move('character', caretPos);\n" +
+                        "            range.select();\n" +
+                        "        }\n" +
+                        "        else {\n" +
+                        "            if(elem.selectionStart) {\n" +
+                        "                elem.focus();\n" +
+                        "                elem.setSelectionRange(caretPos, caretPos);\n" +
+                        "            }\n" +
+                        "            else\n" +
+                        "                elem.focus();\n" +
+                        "        }\n" +
+                        "    }\n" +
+                        "}\n" +
+                        "waitForInput().then((result)=>{\n" +
+                        "\tsetmask(result, mask).then()\n" +
+                        "\tresult.oninput = (e)=> {\n" +
+                        "\t\tsetCaretPosition(result, result.inputmask.caretPos.begin);\n" +
+                        "\t\ttextfield.dispatchEvent(new Event('input'));\n" +
+                        "\t}\n" +
+                        "\tresult.onchange = (e)=> {\n" +
+                        "\t\ttextfield.dispatchEvent(new Event('change'));\n" +
+                        "\t}\n" +
+                        "\tresult.onselect = (e)=> setCaretPosition(result, result.inputmask.caretPos.begin);\n" +
+                        "\tresult.onfocus = (e)=> {\n" +
+                        "\t\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
+                        "\t\t\tsetCaretPosition(result, 0);\n" +
+                        "\t\t}\n" +
+                        "\t\telse{\n" +
+                        "\t\t\tsetCaretPosition(result, result.inputmask.caretPos.begin);\n" +
+                        "\t\t}\n" +
+                        "\t}\n" +
+                        "\tresult.onkeypress = (e)=> {\n" +
+                        "\t\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
+                        "\t\t\tsetCaretPosition(result, 0);\n" +
+                        "\t\t}\n" +
+                        "\t\telse{\n" +
+                        "\t\t\tsetCaretPosition(result, result.inputmask.caretPos.begin);\n" +
+                        "\t\t}\n" +
+                        "\t}\n" +
+                        "\tresult.onclick = (e)=> {\n" +
+                        "\t\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
+                        "\t\t\tsetCaretPosition(result, 0);\n" +
+                        "\t\t}\n" +
+                        "\t\telse{\n" +
+                        "\t\t\tsetCaretPosition(result, result.inputmask.caretPos.begin);\n" +
+                        "\t\t}\n" +
+                        "\t}\n" +
+                        "})\n"
+
+                    );
     }
 
     /**
@@ -428,13 +467,8 @@ public class MaskedTextField extends CustomField<String> {
     public void addTextChangeListener(DomEventListener listener, MaskType maskType) {
         if (inputTextChangeListener != null)
             inputTextChangeListener.remove();
-        inputTextChangeListener = getElement().addEventListener(maskType.equals(MaskType.EAGER) ? "keypress" : "focusout", listener);
+        inputTextChangeListener = getElement().addEventListener(maskType.equals(MaskType.EAGER) ? "input" : "change", listener);
     }
-
-    public Input getInput() {
-        return input;
-    }
-
     public MaskType getMaskType() {
         return maskType;
     }

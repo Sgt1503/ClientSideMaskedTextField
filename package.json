@@ -66,7 +66,6 @@
     "@webcomponents/webcomponentsjs": "^2.2.10",
     "construct-style-sheets-polyfill": "3.0.4",
     "inputmask": "^5.0.7",
-    "jquery": "^3.6.0",
     "lit-element": "2.5.1",
     "lit-html": "1.4.1"
   },
@@ -275,7 +274,6 @@
       "@webcomponents/webcomponentsjs": "^2.2.10",
       "construct-style-sheets-polyfill": "3.0.4",
       "inputmask": "5.0.7",
-      "jquery": "3.6.0",
       "lit-element": "2.5.1",
       "lit-html": "1.4.1"
     },
@@ -299,6 +297,6 @@
       "webpack-dev-server": "3.11.0",
       "webpack-merge": "4.2.2"
     },
-    "hash": "e87437454ecdfe1d55235d07cbbce8575bcb622458498d35602887a74eee8a55"
+    "hash": "8b4006b0668a08bbc8c8d1ab26a6908bb01bfca4a499fe334ad151375d19835d"
   }
 }
