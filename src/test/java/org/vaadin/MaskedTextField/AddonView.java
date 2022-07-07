@@ -10,7 +10,7 @@ public class AddonView extends Div {
     public AddonView() {
         MaskedTextField field = new MaskedTextField("####-###-###");
         field.setId("test");
-        field.addTextChangeListener(l-> System.out.println(field.getValue()), MaskedTextField.MaskType.EAGER);
+        field.addTextChangeListener(l-> System.out.println(field.getValue()), MaskedTextField.MaskType.LAZY);
         add(field, new Input());
     }
 }

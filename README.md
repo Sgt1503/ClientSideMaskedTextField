@@ -6,7 +6,7 @@ Add-on that creates custom-text-field with supporting InputMask and Swing Mask
 
 ### Important Files 
 It's needed to put file jquery-loader.js to folder in your project /frontend/src/ 
-and file custom-textfield.css to folder in your project`` /frontend/src/styles/ncore/components/custom-textfield.css
+and file custom-textfield.css to folder in your project`` 
 
 
 ### Deployment

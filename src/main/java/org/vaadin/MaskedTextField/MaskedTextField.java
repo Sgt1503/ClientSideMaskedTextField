@@ -369,11 +369,11 @@ public class MaskedTextField extends TextField {
         String inputmask = null;
         switch (format) {
             case SWING:
-                inputmask = generateInputmaskJsCode("_", StringUtils.remove(mask, '\''), false,
+                inputmask = generateInputmaskJsCode(StringUtils.isEmpty(placeholder) ? "_" : placeholder, StringUtils.remove(mask, '\''), false,
                         genDefinitionsFromSwingMask(mask, allowedChars));
                 break;
             default:
-                inputmask = generateInputmaskJsCode("_", mask, false);
+                inputmask = generateInputmaskJsCode(placeholder == null ? "_" : placeholder, mask, false);
                 break;
         }
         ;
@@ -384,7 +384,7 @@ public class MaskedTextField extends TextField {
         Util.getJavaScriptInvoke(getElement().getNode(),
                 "let textfield = document.getElementById('" + this.getId().get() + "')\n" +
                         "let mask = " + inputmask + ";\n" +
-"function setmask(element, mask) {\n" +
+                        "function setmask(element, mask) {\n" +
                         "\treturn new Promise((result)=> {\n" +
                         "\t\tmask.mask(element);\n" +
                         "\t} )\t\n" +
@@ -426,6 +426,12 @@ public class MaskedTextField extends TextField {
                         "waitForInput().then((result)=>{\n" +
                         "\tlet oldValue;\n" +
                         "\tsetmask(result, mask);\n" +
+                        "\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
+                        "\t\t\tsetCaretPosition(result, 0);\n" +
+                        "\t}\n" +
+                        "\telse{\n" +
+                        "\t\tsetCaretPosition(result, result.inputmask.caretPos.end);\n" +
+                        "\t}\n" +
                         "\tresult.oninput = (e)=> {\n" +
                         "\t\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
                         "\t\t\tsetCaretPosition(result, 0);\n" +
@@ -439,16 +445,7 @@ public class MaskedTextField extends TextField {
                         "\t\t}\n" +
                         "\t}\n" +
                         "\tresult.onchange = (e)=> {\n" +
-                        "\t\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
-                        "\t\t\tsetCaretPosition(result, 0);\n" +
-                        "\t\t}\n" +
-                        "\t\telse{\n" +
-                        "\t\t\tsetCaretPosition(result, result.inputmask.caretPos.begin);\n" +
-                        "\t\t}\n" +
-                        "\t\tif (result.inputmask.unmaskedvalue() !== oldValue) {\n" +
-                        "\t\t\toldValue = result.inputmask.unmaskedvalue();\n" +
-                        "\t\t\ttextfield.dispatchEvent(new Event('change1'));\n" +
-                        "\t\t}\n" +
+                        "\t\ttextfield.dispatchEvent(new Event('change1'));\n" +
                         "\t}\n" +
                         "\tresult.onfocus = (e)=> {\n" +
                         "\t\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
@@ -466,7 +463,7 @@ public class MaskedTextField extends TextField {
                         "\t\t\tsetCaretPosition(result, result.inputmask.caretPos.begin);\n" +
                         "\t\t}\n" +
                         "\t}\n" +
-                        "\tresult.onkeydown = (e)=> {\n" +
+                        "\tresult.onkeyup = (e)=> {\n" +
                         "\t \tlet key = e;\n" +
                         "    \tif(key.code == 'Backspace'){\n" +
                         "\t\t\tif (typeof result.inputmask.caretPos === 'undefined') {\n" +
